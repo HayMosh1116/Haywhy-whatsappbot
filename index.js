@@ -1,4 +1,5 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const qrcode = require('qrcode-terminal');
 
 async function startBot() {
   const { version, isLatest } = await fetchLatestBaileysVersion();
@@ -8,15 +9,21 @@ async function startBot() {
 
   const sock = makeWASocket({
     version,
-    auth: state,
-    printQRInTerminal: true
+    auth: state
   });
 
   // credentials update handler (multi-file)
   sock.ev.on('creds.update', saveCreds);
 
   sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect } = update;
+    const { connection, lastDisconnect, qr } = update;
+    
+    // Display QR code
+    if (qr) {
+      qrcode.generate(qr, { small: true });
+      console.log('\n☝️ Scan this QR code with WhatsApp\n');
+    }
+    
     if (connection === 'close') {
       const shouldReconnect = (lastDisconnect.error && lastDisconnect.error.output &&
         lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut);
@@ -26,7 +33,7 @@ async function startBot() {
         startBot();
       }
     } else if (connection === 'open') {
-      console.log('opened connection');
+      console.log('✅ Bot is now connected and running!');
     }
   });
 
